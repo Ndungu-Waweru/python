@@ -1,0 +1,51 @@
+#Daniel Waweru
+#BCS-03-0026/2023
+
+import cv2
+import dlib
+import numpy as np
+
+# Load pre-trained face detection model from dlib
+detector = dlib.get_frontal_face_detector()
+
+# Load pre-trained gender detection model
+gender_model = cv2.dnn.readNetFromCaffe(
+    'deploy_gender.prototxt', 'gender_net.caffemodel')
+
+# Load the input image
+image = cv2.imread('image\KCUI6450.JPG')
+
+# Resize the image for faster processing
+resized_image = cv2.resize(image, (300, 300))
+
+# Convert the image to a blob
+blob = cv2.dnn.blobFromImage(resized_image, 1.0, (300, 300), (104.0, 177.0, 123.0))
+
+# Pass the blob through the gender detection model
+gender_model.setInput(blob)
+gender_predictions = gender_model.forward()
+
+# Iterate over the detected faces
+for i in range(gender_predictions.shape[2]):
+    confidence = gender_predictions[0, 0, i, 2]
+
+    # Filter out weak predictions
+    if confidence > 0.5:
+        box = gender_predictions[0, 0, i, 3:7] * np.array([300, 300, 300, 300])
+        x, y, x_end, y_end = box.astype('int')
+
+        # Draw the face bounding box
+        cv2.rectangle(image, (x, y), (x_end, y_end), (0, 255, 0), 2)
+
+        # Predict gender
+        gender_label = 'Male' if gender_predictions[0, 0, i, 1] > 0.5 else 'Female'
+        gender_confidence = round(gender_predictions[0, 0, i, 1] * 100, 2)
+
+        # Display gender prediction on the image
+        label = f'{gender_label}: {gender_confidence}%'
+        cv2.putText(image, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+# Display the output image
+cv2.imshow('Face Gender Detection', image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
